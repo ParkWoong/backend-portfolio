@@ -1,7 +1,6 @@
 import binanceDiagram from './binance.mmd?raw'
 import tokenDiagram from './token-filter.mmd?raw'
 
-type Evidence = {label: string; path: string; lines?: string; commit?: string}
 type ProjectCopy = {
   category: string
   title: string
@@ -9,26 +8,20 @@ type ProjectCopy = {
   diagramSummary: string
   features: string[]
   decisions: {title: string; text: string}[]
-  evidence: Evidence[]
 }
 
 export type Project = {
   id: string
   repository: string
-  revision: string
   stack: string[]
   content: {ko: ProjectCopy; en?: ProjectCopy; ja?: ProjectCopy}
   diagrams: {ko: string; en?: string; ja?: string}
 }
 
-const binance = 'src/main/java/com/example/binance/'
-const token = 'src/main/java/io/github/parkwoong/tokenfilter/'
-
 export const projects: readonly Project[] = [
   {
     id: 'market-stream',
     repository: 'ParkWoong/binance',
-    revision: '6902b13e0735502c8c8342ffa7657f432f0e7a28',
     stack: ['Java 17', 'Spring Boot', 'OkHttp', 'WebClient', 'TA4J'],
     diagrams: {ko: binanceDiagram},
     content: {ko: {
@@ -43,21 +36,11 @@ export const projects: readonly Project[] = [
         {title: '연결 실패 후 세션 재시작', text: 'WebSocket 실패 콜백이 세션을 닫고 다시 시작합니다. 재연결 시간이나 알림 전달 성공률의 실측 자료는 공개 저장소에서 확인되지 않았습니다.'},
         {title: '최신 코드와 빌드 검증', text: '최신 커밋은 일봉·4시간봉 평가를 제거하고 5분봉 평가를 추가했습니다. 원본은 REST 서비스의 파일명과 클래스명 대소문자가 달라 컴파일에 실패했습니다. 아키텍처는 해당 커밋의 소스에 근거합니다.'},
       ],
-      evidence: [
-        {label: 'REST 초기화 · WebSocket 수신', path: `${binance}service/KlineSocketService.java`, lines: 'L42-L142'},
-        {label: '연결 실패 후 세션 재시작', path: `${binance}service/KlineSocketService.java`, lines: 'L149-L160'},
-        {label: '신호 키 중복 확인', path: `${binance}service/CalculateService.java`, lines: 'L361-L381'},
-        {label: 'Telegram 전송', path: `${binance}utils/Notifier.java`, lines: 'L18-L34'},
-        {label: 'REST 서비스 파일명과 선언', path: `${binance}service/BInanceRestService.java`, lines: 'L22'},
-        {label: '주요 의존성', path: 'pom.xml', lines: 'L29-L91'},
-        {label: '5분봉 평가를 추가한 커밋', path: '', commit: '6902b13e0735502c8c8342ffa7657f432f0e7a28'},
-      ],
     }},
   },
   {
     id: 'token-cache',
     repository: 'ParkWoong/spring-webclient-redis-token-filter-test',
-    revision: '5418ab565ea7f9207dc2a7e9a17faa7ea70a4b01',
     stack: ['Java 8', 'Spring WebFlux', 'Redis', 'OAuth2', 'JUnit'],
     diagrams: {ko: tokenDiagram},
     content: {ko: {
@@ -71,14 +54,6 @@ export const projects: readonly Project[] = [
         {title: '캐시 히트 시 발급 호출 생략', text: '유효한 캐시 값이 있는 경로는 인증 서버 호출을 건너뜁니다. 테스트는 이 경로를 다루며, 전체 지연시간 개선 폭은 측정 자료가 필요합니다.'},
         {title: '토큰 확보 전 실패 전파', text: '발급 실패나 Redis 저장 실패가 발생하면 대상 API를 호출하지 않습니다. 가짜 Redis와 HTTP 응답을 사용한 단위 테스트 5개를 JDK 17에서 실행해 통과를 확인했습니다.'},
         {title: 'TTL과 동시 미스의 설계 범위', text: 'TTL은 설정에서 주입하며 실제 토큰 만료 시간에 맞춰 관리해야 합니다. 동시에 캐시를 놓친 요청은 각각 토큰을 발급받을 수 있습니다.'},
-      ],
-      evidence: [
-        {label: '캐시 조회 · 토큰 발급 · 헤더 설정', path: `${token}AccessTokenFilter.java`, lines: 'L65-L109'},
-        {label: '인증용·API용 클라이언트 구성', path: `${token}ClientConfig.java`, lines: 'L15-L42'},
-        {label: '캐시 히트·미스와 실패 경로 테스트', path: 'src/test/java/io/github/parkwoong/tokenfilter/AccessTokenFilterTest.java', lines: 'L57-L112'},
-        {label: '설정값 주입과 HTTPS 검사', path: `${token}AccessTokenFilter.java`, lines: 'L30-L62'},
-        {label: 'WebFlux·Reactive Redis 의존성', path: 'pom.xml', lines: 'L6-L31'},
-        {label: '토큰 필터와 테스트를 추가한 커밋', path: '', commit: '511d216c15b0af5589da51637695f8d78fcc47e9'},
       ],
     }},
   },

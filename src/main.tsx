@@ -5,7 +5,7 @@ import { projects, type Project } from './projects'
 import './styles.css'
 
 const profile = 'https://github.com/ParkWoong'
-const tabs = ['architecture', 'design', 'evidence'] as const
+const tabs = ['architecture', 'design'] as const
 
 function repositoryUrl(project: Project) {
   return `https://github.com/${project.repository}`
@@ -91,18 +91,27 @@ function Diagram({ source }: { source: string }) {
   </>
 }
 
-function ProjectDetails({ project }: { project: Project }) {
+function ProjectDetails({ project, onClose }: { project: Project; onClose: () => void }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>('architecture')
+  const panel = useRef<HTMLElement>(null)
   const copy = project.content[locale] ?? project.content.ko
   const url = repositoryUrl(project)
 
-  return <article className="case-study" aria-labelledby="case-title">
+  useEffect(() => {
+    panel.current?.focus({preventScroll: true})
+    panel.current?.scrollIntoView({block: 'start'})
+  }, [])
+
+  return <article ref={panel} id={project.id} className="case-study" aria-labelledby="case-title" tabIndex={-1}>
     <div className="case-header">
       <div>
         <p className="case-category">{copy.category}</p>
         <h3 id="case-title">{copy.title}</h3>
       </div>
       <a className="secondary-button case-link" href={url}>{t.repository}</a>
+      <button className="case-close" type="button" aria-label={t.closeDetails} onClick={onClose}>
+        <span aria-hidden="true">×</span>
+      </button>
     </div>
     <div className="tab-bar" role="group" aria-label={t.projectDetails}>
       {tabs.map((item) => <button
@@ -129,14 +138,6 @@ function ProjectDetails({ project }: { project: Project }) {
           <dt>{decision.title}</dt><dd>{decision.text}</dd>
         </div>)}
       </dl>}
-      {tab === 'evidence' && <>
-        <p className="evidence-intro">{t.evidenceDescription} <a href={`${url}/commit/${project.revision}`}><code>{project.revision.slice(0, 7)}</code></a></p>
-        <ul className="evidence-list">{copy.evidence.map(({label, path, commit, lines}) => <li key={label}>
-          <a href={commit ? `${url}/commit/${commit}` : `${url}/blob/${project.revision}/${path}${lines ? `#${lines}` : ''}`}>
-            <strong>{label}</strong><code>{commit?.slice(0, 7) ?? path}</code>
-          </a>
-        </li>)}</ul>
-      </>}
     </div>
   </article>
 }
@@ -146,16 +147,21 @@ function projectFromHash() {
 }
 
 function App() {
-  const [project, setProject] = useState(() => projectFromHash() ?? projects[0])
+  const [project, setProject] = useState(projectFromHash)
+  const projectsHeading = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
     function selectFromHash() {
-      const selected = projectFromHash()
-      if (selected) setProject(selected)
+      setProject(projectFromHash())
     }
     window.addEventListener('hashchange', selectFromHash)
     return () => window.removeEventListener('hashchange', selectFromHash)
   }, [])
+
+  function closeDetails() {
+    window.location.hash = 'projects'
+    projectsHeading.current?.focus({preventScroll: true})
+  }
 
   return <>
     <a className="skip-link" href="#main">{t.skip}</a>
@@ -186,7 +192,7 @@ function App() {
       <section className="work-section" id="projects" aria-labelledby="projects-title">
         <div className="page-width">
           <div className="work-heading">
-            <h2 id="projects-title">{t.selectedWork}</h2>
+            <h2 ref={projectsHeading} id="projects-title" tabIndex={-1}>{t.selectedWork}</h2>
             <p>{t.selectedDescription}</p>
           </div>
           <div className="project-grid">
@@ -194,17 +200,14 @@ function App() {
               const copy = item.content[locale] ?? item.content.ko
               return <article className="project-card" key={item.id}>
                 <p className="card-category">{copy.category}</p>
-                <h3><a href={`#${item.id}`} onClick={() => setProject(item)}>{copy.title}</a></h3>
+                <h3><a href={`#${item.id}`}>{copy.title}</a></h3>
                 <p className="project-summary">{copy.summary}</p>
                 <Stack items={item.stack} />
-                <a className="detail-link" href={`#${item.id}`} onClick={() => setProject(item)} aria-label={`${copy.title} ${t.seeDetails}`}>{t.seeDetails}</a>
+                <a className="detail-link" href={`#${item.id}`} aria-label={`${copy.title} ${t.seeDetails}`}>{t.seeDetails}</a>
               </article>
             })}
           </div>
-          <div className="detail-targets">
-            {projects.map((item) => <span id={item.id} key={item.id} />)}
-          </div>
-          <ProjectDetails key={project.id} project={project} />
+          {project && <ProjectDetails key={project.id} project={project} onClose={closeDetails} />}
         </div>
       </section>
     </main>
