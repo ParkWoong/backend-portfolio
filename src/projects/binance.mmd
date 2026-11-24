@@ -1,0 +1,17 @@
+flowchart TB
+  accTitle: Binance 시세 스트리밍과 알림
+  accDescr: REST로 초기 봉을 확보하고 WebSocket 마감봉을 처리해 조건에 맞는 신호를 Telegram으로 전송한다.
+  REST["Binance REST · 초기 봉"] --> S["SymbolSession · 시간대별 버퍼"]
+  WS["Binance WebSocket · 1h / 15m / 5m"] --> CLOSE["마감봉 확인 · 중복과 역순 제외"]
+  CLOSE --> S
+  S --> H["1h · 판단 환경 갱신"]
+  S --> M["15m · 신호 평가"]
+  H --> M
+  S --> L["5m · 활성 상태에서 평가"]
+  M -->|활성 상태 갱신| L
+  M --> N["Notifier · Telegram"]
+  L --> N
+  classDef external fill:#23372b,color:#e7f5e7,stroke:#557564
+  classDef accent fill:#d7f481,color:#18241a,stroke:#d7f481
+  class REST,WS external
+  class S,N accent
