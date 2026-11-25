@@ -1,10 +1,44 @@
 # 공개 저장소 분석
 
+## 2026-11-25 전체 카탈로그
+
+자기 참조를 피하기 위해 `backend-portfolio`를 제외하고 공개 원본 저장소 25개를 검토했다. 아래 커밋의 디렉터리, 빌드 설정, 애플리케이션 설정, README와 라우트를 기준으로 기술 스택, 프로젝트 구조, 로컬 Postman 예시를 작성했다. 요청 예시의 상태와 본문은 소스나 README 기준 예상 결과다. 외부 서비스 연동과 실거래 실행은 검증 범위에 포함되지 않았다.
+
+| 저장소 | 검토한 커밋 | 분류 |
+| --- | --- | --- |
+| `binance` | `6902b13` | 서비스 프로젝트 |
+| `upbit` | `d9d0ea4` | 서비스 프로젝트 |
+| `byPassWebFlux` | `a166b20` | 백엔드 실습 |
+| `separate_connection_pool` | `bb2c2ae` | 백엔드 실습 |
+| `java-json-mapping-test` | `b32fc39` | 백엔드 실습 |
+| `java-jwt-validation-test` | `2bdff39` | 백엔드 실습 |
+| `spring-async-audit-test` | `a006b98` | 백엔드 실습 |
+| `spring-bean-validation-test` | `679db89` | 백엔드 실습 |
+| `spring-config-cache-test` | `519c230` | 백엔드 실습 |
+| `spring-ehcache-test` | `1ed7fbd` | 백엔드 실습 |
+| `spring-http-proxy-test` | `d71c13c` | 백엔드 실습 |
+| `spring-jpa-json-converter-test` | `8cf391e` | 백엔드 실습 |
+| `spring-mvc-body-filter-test` | `d5d2c0a` | 백엔드 실습 |
+| `spring-mvc-exception-handler-test` | `b4181df` | 백엔드 실습 |
+| `spring-mybatis-test` | `9a4619c` | 백엔드 실습 |
+| `spring-oauth2-token-request-test` | `1ce22f4` | 백엔드 실습 |
+| `spring-webclient-redis-token-filter-test` | `5418ab5` | 백엔드 실습 |
+| `spring-webflux-error-handler-test` | `ee41926` | 백엔드 실습 |
+| `spring-webflux-filter-test` | `028fcd3` | 백엔드 실습 |
+| `spring-webflux-proxy-test` | `79d8d0e` | 백엔드 실습 |
+| `spring-webflux-sftp-test` | `0bb60e9` | 백엔드 실습 |
+| `coading_test` | `6ff8ed1` | 알고리즘 |
+| `sideJob` | `04fadb8` | 초기 저장소 |
+| `test_webflux` | `93349d7` | 초기 저장소 |
+| `webflux_sftp_server` | `7363943` | 초기 저장소 |
+
+## 2026-11-24 대표 프로젝트 상세 분석
+
 2026-11-24 기준 GitHub 계정 `ParkWoong`의 공개 저장소 25개를 목록과 메타데이터로 살폈다. 그중 `binance`, `upbit`, `byPassWebFlux`, `separate_connection_pool`, `spring-async-audit-test`, `spring-webclient-redis-token-filter-test`의 README 존재 여부와 내용 또는 주요 커밋을 확인했다. 대표 두 프로젝트의 소스, Maven 설정, 애플리케이션 설정, 테스트, 커밋 이력을 상세 분석했다.
 
 `binance`는 실시간 외부 데이터 수신과 시간대별 상태 관리를, `spring-webclient-redis-token-filter-test`는 서비스 간 인증과 캐시 실패 처리, 테스트 설계를 보여준다. 두 예제를 함께 배치해 금융 데이터를 다루는 흐름과 인증 경계에서의 동작을 검토할 수 있게 했다.
 
-## Binance 시세 스트리밍과 알림
+### Binance 시세 스트리밍과 알림
 
 **분석 기준** [`6902b13`](https://github.com/ParkWoong/binance/commit/6902b13e0735502c8c8342ffa7657f432f0e7a28)
 
@@ -20,7 +54,7 @@ Spring Boot의 설정 바인딩으로 심볼과 연결 설정을 주입한다. R
 
 JDK 17에서 원본을 컴파일했을 때 공개 클래스명 `BinanceRestService`와 [파일명 `BInanceRestService.java`](https://github.com/ParkWoong/binance/blob/6902b13e0735502c8c8342ffa7657f432f0e7a28/src/main/java/com/example/binance/service/BInanceRestService.java#L22)의 대소문자 불일치를 재현했다. 위 아키텍처는 해당 커밋의 소스 기반 분석이다.
 
-## WebClient OAuth2 토큰 캐싱
+### WebClient OAuth2 토큰 캐싱
 
 **분석 기준** [`5418ab5`](https://github.com/ParkWoong/spring-webclient-redis-token-filter-test/commit/5418ab565ea7f9207dc2a7e9a17faa7ea70a4b01)
 
@@ -36,7 +70,7 @@ JDK 17에서 원본을 컴파일했을 때 공개 클래스명 `BinanceRestServi
 
 2026-11-24에 JDK 17로 원본의 `mvn test`를 실행했고 단위 테스트 5개가 통과했다. 빌드 설정의 Java 대상 버전은 8이다.
 
-## 확인이 필요한 질문
+### 확인이 필요한 질문
 
 1. 두 프로젝트 각각에서 직접 맡은 설계, 구현, 테스트 범위는 무엇인가요? 공동 작업 또는 AI 도구 지원을 어떤 범위로 표시하면 정확한가요?
 2. Binance의 OkHttp·TA4J와 토큰 예제의 Reactive Redis를 선택할 때 비교한 대안이나 실제 제약이 있었나요?

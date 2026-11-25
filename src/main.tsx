@@ -1,166 +1,130 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { locale, t } from './i18n'
-import { projects, type Project } from './projects'
+import { projectGroups, projects, type Project, type ProjectGroup } from './projects'
 import './styles.css'
 
 const profile = 'https://github.com/ParkWoong'
-const tabs = ['architecture', 'design'] as const
+const groupCounts = projectGroups.map((group) => projects.filter((project) => project.group === group).length)
+const buildCommands = {
+  maven: ['mvn clean verify', 'mvn spring-boot:run'],
+  wrapper: ['sh ./mvnw clean verify', 'sh ./mvnw spring-boot:run'],
+}
 
-function repositoryUrl(project: Project) {
-  return `https://github.com/${project.repository}`
+function projectId(project: Project) {
+  return project.id ?? project.repository
 }
 
 function Stack({ items }: { items: string[] }) {
-  return <ul className="flex flex-wrap gap-2" aria-label="Tech stack">
+  return <ul className="flex flex-wrap gap-2" aria-label={t.techStack}>
     {items.map((item) => <li className="tech-tag" key={item}>{item}</li>)}
   </ul>
 }
 
-function FlowPreview() {
-  return <figure className="flow-preview">
-    <figcaption className="flow-caption"><span /> {t.flowTitle}</figcaption>
-    <div className="flow-body">
-      <div className="flow-inputs">
-        <div className="flow-node"><span className="flow-symbol" aria-hidden="true">↔</span><strong>REST</strong></div>
-        <div className="flow-node"><span className="flow-symbol" aria-hidden="true">≋</span><strong>WebSocket</strong></div>
-      </div>
-      <div className="flow-join" aria-hidden="true" />
-      <div className="flow-node flow-main"><strong>SymbolSession</strong><small>{t.flowSession}</small></div>
-      <div className="flow-line" aria-hidden="true" />
-      <div className="flow-node flow-output"><strong>Telegram</strong><small>{t.flowAlert}</small></div>
-    </div>
-    <p className="flow-note">Binance Futures <span aria-hidden="true">/</span> {t.flowSource}</p>
-  </figure>
-}
-
-let mermaidModule: ReturnType<typeof loadMermaid> | undefined
-
-async function loadMermaid() {
-  const {default: mermaid} = await import('mermaid')
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'base',
-    themeVariables: {
-      primaryColor: '#1f2e27', primaryTextColor: '#e7f5e7', primaryBorderColor: '#557564',
-      lineColor: '#91ae9d', edgeLabelBackground: '#12201a', textColor: '#e7f5e7',
-      fontFamily: 'system-ui, sans-serif', fontSize: '15px',
-    },
-    flowchart: {htmlLabels: false, useMaxWidth: false, padding: 14},
-  })
-  return mermaid
-}
-
-let nextDiagramId = 0
-
-function Diagram({ source }: { source: string }) {
-  const frame = useRef<HTMLDivElement>(null)
-  const [svg, setSvg] = useState<string>()
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let current = true
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting || !current) return
-      observer.disconnect()
-      const id = `architecture-${++nextDiagramId}`
-      mermaidModule ??= loadMermaid()
-      mermaidModule.then((mermaid) => mermaid.render(id, source)).then(({svg}) => {
-        if (current) setSvg(svg)
-      }).catch(() => {
-        if (current) setFailed(true)
-      })
-    }, {rootMargin: '240px'})
-    observer.observe(frame.current!)
-    return () => {
-      current = false
-      observer.disconnect()
-    }
-  }, [source])
-
-  return <>
-    <div ref={frame} className="diagram-frame" tabIndex={0} role="region" aria-label={t.architecture}>
-      {svg ? <div className="diagram-content" dangerouslySetInnerHTML={{__html: svg}} />
-        : <p className="diagram-status" role="status">{failed ? t.diagramError : t.loading}</p>}
-    </div>
-    <details className="diagram-source">
-      <summary>{t.mermaidSource}</summary>
-      <pre><code>{source}</code></pre>
-    </details>
-  </>
+function CatalogOverview() {
+  return <aside className="catalog-overview" aria-labelledby="catalog-title">
+    <h2 id="catalog-title">{t.catalogTitle}</h2>
+    <p className="catalog-total"><strong>{projects.length}</strong> {t.repositories}</p>
+    <dl>{projectGroups.map((group, index) => <div key={group}>
+      <dt>{t.groups[group]}</dt><dd>{groupCounts[index]}</dd>
+    </div>)}</dl>
+  </aside>
 }
 
 function ProjectDetails({ project, onClose }: { project: Project; onClose: () => void }) {
-  const [tab, setTab] = useState<(typeof tabs)[number]>('architecture')
   const panel = useRef<HTMLElement>(null)
   const copy = project.content[locale] ?? project.content.ko
-  const url = repositoryUrl(project)
+  const commands = project.commands ?? (project.build ? buildCommands[project.build] : [])
 
   useEffect(() => {
     panel.current?.focus({preventScroll: true})
     panel.current?.scrollIntoView({block: 'start'})
   }, [])
 
-  return <article ref={panel} id={project.id} className="case-study" aria-labelledby="case-title" tabIndex={-1}>
+  return <article ref={panel} id={projectId(project)} className="case-study" aria-labelledby="case-title" tabIndex={-1}>
     <div className="case-header">
       <div>
-        <p className="case-category">{copy.category}</p>
+        <p className="case-category">{t.groups[project.group]}</p>
         <h3 id="case-title">{copy.title}</h3>
+        <p className="case-repo"><code>{project.repository}</code></p>
       </div>
-      <a className="secondary-button case-link" href={url}>{t.repository}</a>
+      <a className="secondary-button case-link" href={`${profile}/${project.repository}`}>{t.repository}</a>
       <button className="case-close" type="button" aria-label={t.closeDetails} onClick={onClose}>
         <span aria-hidden="true">×</span>
       </button>
     </div>
-    <div className="tab-bar" role="group" aria-label={t.projectDetails}>
-      {tabs.map((item) => <button
-        key={item}
-        type="button"
-        aria-pressed={item === tab}
-        aria-controls="case-panel"
-        onClick={() => setTab(item)}
-      >{t[item]}</button>)}
-    </div>
-    <div id="case-panel" className="case-panel">
-      {tab === 'architecture' && <>
-        <div className="architecture-intro">
-          <p>{copy.diagramSummary}</p>
-          <div>
-            <h4>{t.features}</h4>
-            <ul>{copy.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-          </div>
-        </div>
-        <Diagram source={project.diagrams[locale] ?? project.diagrams.ko} />
-      </>}
-      {tab === 'design' && <dl className="decision-grid">
-        {copy.decisions.map((decision) => <div key={decision.title}>
-          <dt>{decision.title}</dt><dd>{decision.text}</dd>
-        </div>)}
-      </dl>}
+    <div className="case-panel">
+      <p className="case-summary">{copy.summary}</p>
+      <div className="readme-grid">
+        {copy.features.length > 0 && <section className="readme-section">
+          <h4>{t.features}</h4>
+          <ul className="feature-list">{copy.features.map((item) => <li key={item}>{item}</li>)}</ul>
+        </section>}
+        {project.stack.length > 0 && <section className="readme-section">
+          <h4>{t.techStack}</h4>
+          <Stack items={project.stack} />
+        </section>}
+        <section className="readme-section readme-wide">
+          <h4>{t.structure}</h4>
+          <dl className="file-list">{copy.structure.map(([path, purpose]) => <div key={path}>
+            <dt><code>{path}</code></dt><dd>{purpose}</dd>
+          </div>)}</dl>
+        </section>
+        <section className="readme-section readme-wide">
+          <h4>{t.run}</h4>
+          <p>{copy.setup ?? t.mavenSetup}</p>
+          {commands.length > 0 && <pre><code>{[...(project.directory ? [`cd ${project.directory}`] : []), ...commands].join('\n')}</code></pre>}
+        </section>
+        <section className="readme-section readme-wide">
+          <h4>{t.postman}</h4>
+          {copy.postmanNote && <p>{copy.postmanNote}</p>}
+          {copy.requests && <div className="request-grid">
+            {copy.requests.map((request) => <div className="request-example" key={request.name}>
+              <h5>{request.name}</h5>
+              <div className="request-line"><strong>{request.method}</strong><code>http://localhost:{project.port ?? 8080}{request.path}</code></div>
+              {request.auth && <p>{request.auth}</p>}
+              {request.mediaType && <p className="content-type"><code>Content-Type: {request.mediaType}</code></p>}
+              {request.body && <pre><code>{typeof request.body === 'string' ? request.body : JSON.stringify(request.body, null, 2)}</code></pre>}
+              <p><strong>{t.expected}</strong> {request.expected}</p>
+            </div>)}
+          </div>}
+        </section>
+      </div>
     </div>
   </article>
 }
 
 function projectFromHash() {
-  return projects.find((project) => `#${project.id}` === window.location.hash)
+  return projects.find((project) => `#${projectId(project)}` === window.location.hash)
 }
 
 function App() {
   const [project, setProject] = useState(projectFromHash)
-  const projectsHeading = useRef<HTMLHeadingElement>(null)
+  const [group, setGroup] = useState<ProjectGroup>()
+  const closeFocus = useRef<string | undefined>(undefined)
+  const visibleProjects = group ? projects.filter((item) => item.group === group) : projects
 
   useEffect(() => {
-    function selectFromHash() {
-      setProject(projectFromHash())
-    }
+    const selectFromHash = () => setProject(projectFromHash())
     window.addEventListener('hashchange', selectFromHash)
     return () => window.removeEventListener('hashchange', selectFromHash)
   }, [])
 
-  function closeDetails() {
+  useEffect(() => {
+    if (project || !closeFocus.current) return
+    const destination = document.getElementById(closeFocus.current) ?? document.getElementById('projects-title')
+    destination?.focus()
+    closeFocus.current = undefined
+  }, [project])
+
+  function closeDetails(item: Project) {
+    closeFocus.current = `open-${projectId(item)}`
     window.location.hash = 'projects'
-    projectsHeading.current?.focus({preventScroll: true})
+  }
+
+  function filter(next?: ProjectGroup) {
+    setGroup(next)
+    if (project) window.location.hash = 'projects'
   }
 
   return <>
@@ -186,28 +150,35 @@ function App() {
             <a className="secondary-button" href={profile}>GitHub</a>
           </div>
         </div>
-        <FlowPreview />
+        <CatalogOverview />
       </section>
 
       <section className="work-section" id="projects" aria-labelledby="projects-title">
         <div className="page-width">
           <div className="work-heading">
-            <h2 ref={projectsHeading} id="projects-title" tabIndex={-1}>{t.selectedWork}</h2>
-            <p>{t.selectedDescription}</p>
+            <h2 id="projects-title" tabIndex={-1}>{t.projects}</h2>
+            <p>{t.collectionDescription}</p>
           </div>
+          <div className="catalog-filters" role="group" aria-label={t.filter}>
+            <button type="button" aria-pressed={!group} onClick={() => filter()}>{t.all} <span>{projects.length}</span></button>
+            {projectGroups.map((item, index) => <button key={item} type="button" aria-pressed={group === item} onClick={() => filter(item)}>
+              {t.groups[item]} <span>{groupCounts[index]}</span>
+            </button>)}
+          </div>
+          {project && <ProjectDetails key={projectId(project)} project={project} onClose={() => closeDetails(project)} />}
           <div className="project-grid">
-            {projects.map((item) => {
+            {visibleProjects.map((item) => {
               const copy = item.content[locale] ?? item.content.ko
-              return <article className="project-card" key={item.id}>
-                <p className="card-category">{copy.category}</p>
-                <h3><a href={`#${item.id}`}>{copy.title}</a></h3>
+              const id = projectId(item)
+              return <article className="project-card" key={id}>
+                <p className="card-category">{t.groups[item.group]}</p>
+                <h3><a href={`#${id}`}>{copy.title}</a></h3>
                 <p className="project-summary">{copy.summary}</p>
-                <Stack items={item.stack} />
-                <a className="detail-link" href={`#${item.id}`} aria-label={`${copy.title} ${t.seeDetails}`}>{t.seeDetails}</a>
+                {item.stack.length > 0 && <Stack items={item.stack} />}
+                <a className="detail-link" id={`open-${id}`} href={`#${id}`} aria-label={`${copy.title} ${t.seeDetails}`}>{t.seeDetails}</a>
               </article>
             })}
           </div>
-          {project && <ProjectDetails key={project.id} project={project} onClose={closeDetails} />}
         </div>
       </section>
     </main>

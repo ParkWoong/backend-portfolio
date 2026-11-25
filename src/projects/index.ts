@@ -1,60 +1,122 @@
-import binanceDiagram from './binance.mmd?raw'
-import tokenDiagram from './token-filter.mmd?raw'
+import { examples } from './examples'
+import type { Project } from './types'
 
-type ProjectCopy = {
-  category: string
-  title: string
-  summary: string
-  diagramSummary: string
-  features: string[]
-  decisions: {title: string; text: string}[]
-}
-
-export type Project = {
-  id: string
-  repository: string
-  stack: string[]
-  content: {ko: ProjectCopy; en?: ProjectCopy; ja?: ProjectCopy}
-  diagrams: {ko: string; en?: string; ja?: string}
-}
+export { projectGroups, type Project, type ProjectGroup } from './types'
 
 export const projects: readonly Project[] = [
   {
-    id: 'market-stream',
-    repository: 'ParkWoong/binance',
-    stack: ['Java 17', 'Spring Boot', 'OkHttp', 'WebClient', 'TA4J'],
-    diagrams: {ko: binanceDiagram},
+    id: 'market-stream', repository: 'binance', group: 'project', build: 'wrapper',
+    stack: ['Java 17', 'Spring Boot 3.5.6', 'OkHttp', 'WebClient', 'TA4J'],
     content: {ko: {
-      category: '실시간 금융 데이터',
       title: 'Binance 시세 스트리밍',
-      summary: 'REST로 과거 봉을 확보하고, WebSocket 마감봉을 시간대별로 평가해 Telegram 알림을 보냅니다.',
-      diagramSummary: '심볼별 세션이 1시간·15분·5분봉을 관리합니다. 1시간봉은 판단 환경을 갱신하고, 15분봉은 신호를 평가하며, 5분봉 평가는 활성 상태에서 실행됩니다.',
-      features: ['과거 봉 초기화와 실시간 스트리밍', '심볼·시간대별 버퍼와 지표 계산', '조건별 알림 생성과 중복 호출 방지'],
-      decisions: [
-        {title: '초기화와 실시간 수신 분리', text: 'REST로 계산에 필요한 과거 데이터를 채운 뒤 OkHttp WebSocket으로 이어받습니다. TA4J는 EMA, RSI, 볼린저 밴드 계산을 담당합니다.'},
-        {title: '캔들 처리 범위 제한', text: '미완성 봉과 중복·역순 봉을 건너뛰고 시간대별 실시간 버퍼를 300개 이하로 유지합니다. 알림 키는 프로세스 메모리에서 관리합니다.'},
-        {title: '연결 실패 후 세션 재시작', text: 'WebSocket 실패 콜백이 세션을 닫고 다시 시작합니다. 재연결 시간이나 알림 전달 성공률의 실측 자료는 공개 저장소에서 확인되지 않았습니다.'},
-        {title: '최신 코드와 빌드 검증', text: '최신 커밋은 일봉·4시간봉 평가를 제거하고 5분봉 평가를 추가했습니다. 원본은 REST 서비스의 파일명과 클래스명 대소문자가 달라 컴파일에 실패했습니다. 아키텍처는 해당 커밋의 소스에 근거합니다.'},
+      summary: 'REST로 과거 봉을 확보하고 WebSocket 마감봉을 평가해 Telegram 알림을 보내는 시세 처리 실험입니다.',
+      features: ['심볼별로 1시간·15분·5분봉을 관리하고 미완성, 중복, 역순 이벤트를 건너뜁니다.', '실시간 버퍼를 시간대별 300개 이하로 유지하고 TA4J로 EMA, RSI, 볼린저 밴드를 계산합니다.', '신호 키를 메모리에 기록해 동일 키의 알림 호출을 중복 실행하지 않습니다.'],
+      structure: [
+        ['src/main/java/com/example/binance/service/', 'REST 초기화, WebSocket 수신, 캔들 평가와 지표 계산'],
+        ['src/main/java/com/example/binance/ws/SymbolSession.java', '심볼별 연결과 시간대별 버퍼 상태'],
+        ['src/main/java/com/example/binance/controller/BinanceScanController.java', '세션 조회 및 로컬 제어 API'],
+        ['src/main/java/com/example/binance/utils/Notifier.java', 'Telegram 알림 전송'],
       ],
+      setup: 'JDK 17을 사용합니다. 원본의 REST 서비스 파일명과 클래스명 대소문자가 달라 컴파일 실패가 재현되었습니다. 기동 검증에는 해당 오류 수정과 외부 연동 설정이 필요합니다.',
+      requests: [{name: '심볼별 세션 상태 읽기', method: 'GET', path: '/session/state', expected: '세션 상태를 담은 텍스트 응답. 애플리케이션 기동 후 확인할 수 있습니다.'}],
     }},
   },
   {
-    id: 'token-cache',
-    repository: 'ParkWoong/spring-webclient-redis-token-filter-test',
-    stack: ['Java 8', 'Spring WebFlux', 'Redis', 'OAuth2', 'JUnit'],
-    diagrams: {ko: tokenDiagram},
+    repository: 'upbit', group: 'project', build: 'wrapper',
+    stack: ['Java 17', 'Spring Boot', 'WebClient', 'JJWT', 'Spring Data JPA', 'H2'],
     content: {ko: {
-      category: '서비스 간 인증',
-      title: 'WebClient 토큰 캐싱',
-      summary: 'OAuth2 액세스 토큰을 Redis에서 재사용하고, 확보한 토큰을 WebClient 필터에서 요청에 추가합니다.',
-      diagramSummary: 'Redis에 토큰이 없으면 별도의 WebClient로 발급받아 TTL과 함께 저장합니다. 조회·발급·저장 중 오류가 나면 대상 API 호출 전에 실패를 반환합니다.',
-      features: ['OAuth2 client_credentials 토큰 발급', 'Reactive Redis 조회와 TTL 기반 저장', 'Bearer 헤더 적용과 오류 전파'],
-      decisions: [
-        {title: '인증 요청과 업무 API 호출 분리', text: 'API용 클라이언트에만 필터를 적용합니다. 별도의 인증 클라이언트가 토큰을 발급받으므로 인증 요청이 필터에 다시 진입하는 것을 피합니다.'},
-        {title: '캐시 히트 시 발급 호출 생략', text: '유효한 캐시 값이 있는 경로는 인증 서버 호출을 건너뜁니다. 테스트는 이 경로를 다루며, 전체 지연시간 개선 폭은 측정 자료가 필요합니다.'},
-        {title: '토큰 확보 전 실패 전파', text: '발급 실패나 Redis 저장 실패가 발생하면 대상 API를 호출하지 않습니다. 가짜 Redis와 HTTP 응답을 사용한 단위 테스트 5개를 JDK 17에서 실행해 통과를 확인했습니다.'},
-        {title: 'TTL과 동시 미스의 설계 범위', text: 'TTL은 설정에서 주입하며 실제 토큰 만료 시간에 맞춰 관리해야 합니다. 동시에 캐시를 놓친 요청은 각각 토큰을 발급받을 수 있습니다.'},
+      title: 'Upbit API 연동 실험',
+      summary: '시장 데이터 조회, JWT 요청 인증, 주문 응답과 거래 이력 저장을 연결한 거래소 API 실험입니다.',
+      features: ['시장, 캔들, 호가 데이터를 바탕으로 후보를 조회하는 경로를 제공합니다.', '인증 요청에서 WebClient 필터가 요청 데이터를 바탕으로 JWT를 구성합니다.', '주문 요청과 거래 이력 저장, 거래 중지 이벤트를 각각 서비스로 분리합니다.'],
+      structure: [
+        ['src/main/java/com/example/upbit/controller/', '시장 조회와 거래 제어 API'],
+        ['src/main/java/com/example/upbit/service/', '시장 데이터 평가, 주문 연동, 중지 이벤트'],
+        ['src/main/java/com/example/upbit/config/TokenFilterFunction.java', 'WebClient 요청 인증 필터'],
+        ['src/main/java/com/example/upbit/history/', '거래 이력 엔티티와 저장소'],
       ],
+      setup: 'JDK 17을 사용합니다. 외부 API와 알림 설정은 로컬 환경에서 구성합니다. 원본의 실거래 호출과 성과 수치는 확인 범위에 포함되지 않았습니다.',
+      postmanNote: '아래 요청은 로컬 테스트 컨트롤러의 본문 수신 예시입니다.',
+      requests: [{name: '샘플 요청 본문 수신', method: 'POST', path: '/requestBodyTest', mediaType: 'application/json', body: {"message": "sample"}, expected: '본문을 받은 뒤 TRUE 텍스트를 반환합니다.'}],
+    }},
+  },
+  {
+    repository: 'byPassWebFlux', group: 'lab', build: 'wrapper', directory: 'webflux', port: 8081,
+    stack: ['Java 17', 'Spring Boot', 'Spring WebFlux', 'WebClient'],
+    content: {ko: {
+      title: 'WebFlux 로컬 요청 전달',
+      summary: '함수형 라우터에서 받은 POST 요청을 WebClient로 로컬 미러 엔드포인트에 전달하는 실습입니다.',
+      features: ['RouterFunction이 전달 경로와 본문 에코 경로를 각각 등록합니다.', 'WebClient가 요청 헤더와 바이트 본문을 로컬 미러로 보냅니다.'],
+      structure: [
+        ['webflux/src/main/java/com/woong/webflux/config/RouterConfig.java', 'POST 라우트 등록'],
+        ['webflux/src/main/java/com/woong/webflux/handler/', '요청 전달과 미러 응답 처리'],
+        ['webflux/src/main/java/com/woong/webflux/publisher/WebClientPublisher.java', '로컬 미러 HTTP 호출'],
+      ],
+      setup: 'JDK 17로 webflux 디렉터리에서 실행합니다. 로컬 서버 포트는 8081입니다.',
+      requests: [{name: '미러에 본문 보내기', method: 'POST', path: '/mirror', mediaType: 'text/plain', body: 'hello', expected: 'HTTP 200, hello 텍스트'}],
+    }},
+  },
+  {
+    repository: 'separate_connection_pool', group: 'lab', build: 'wrapper', directory: 'connection_pool',
+    stack: ['Java 17', 'Spring Boot', 'MyBatis', 'HikariCP', 'MySQL'],
+    content: {ko: {
+      title: '업무·로그 DB 커넥션 풀 분리',
+      summary: '업무 조회와 로그 적재에 각각 HikariCP 데이터소스와 MyBatis 세션을 연결하는 실습입니다.',
+      features: ['업무용과 로그용 DataSource, SqlSessionFactory, SqlSessionTemplate을 각각 정의합니다.', '패키지별 MapperScan으로 조회 및 로그 SQL이 해당 풀을 사용하도록 구성합니다.'],
+      structure: [
+        ['connection_pool/src/main/java/com/example/connection_pool/config/BatisConfig.java', '데이터소스와 MyBatis 세션 구성'],
+        ['connection_pool/src/main/java/com/example/connection_pool/service/TestService.java', '조회, 로그 적재 및 풀 식별'],
+        ['connection_pool/src/main/resources/mybatis/', '업무 조회와 로그 INSERT 매퍼 XML'],
+      ],
+      setup: 'JDK 17과 로컬 MySQL을 사용합니다. 매퍼 XML이 기대하는 테이블과 업무·로그 풀 설정을 직접 구성해야 합니다.',
+      requests: [{name: '샘플 행 조회', method: 'GET', path: '/data/1', expected: '테스트 DB에 ID 1의 행을 준비한 뒤 조회 결과를 확인합니다.'}],
+    }},
+  },
+  ...examples,
+  {
+    repository: 'coading_test', group: 'algorithm', commands: ['javac Back2178.java', 'java Back2178'],
+    stack: ['Java', 'BFS', 'Union-Find', '이진 탐색'],
+    content: {ko: {
+      title: 'Java 알고리즘 풀이',
+      summary: '백준 문제의 그래프 탐색, 자료구조, 탐색 알고리즘을 Java로 구현한 풀이 모음입니다.',
+      features: ['파일별 main 메서드에서 표준 입력을 처리합니다.', 'BFS, 서로소 집합, 정렬 후 이진 탐색 등 문제별 접근을 비교할 수 있습니다.'],
+      structure: [['Back2178.java', '미로를 너비 우선 탐색'], ['Back1717.java', '서로소 집합의 합치기와 조회'], ['Back1920.java', '정렬과 수 찾기']],
+      setup: 'JDK에서 개별 Java 파일을 컴파일하고 해당 문제의 입력을 표준 입력으로 전달합니다.',
+      postmanNote: '표준 입력과 출력으로 실행하는 CLI 풀이입니다.',
+    }},
+  },
+  {
+    repository: 'sideJob', group: 'starter', build: 'wrapper', directory: 'woong',
+    stack: ['Java 17', 'Spring Boot', 'WebClient', 'Selenium', 'Jsoup'],
+    content: {ko: {
+      title: '웹 콘텐츠 수집 실험 초안',
+      summary: 'WebClient HTTP 호출과 Selenium 페이지 로딩을 실험하기 위한 Spring Boot 초기 코드입니다.',
+      features: ['외부 HTTP 호출용 서비스와 브라우저 드라이버 설정을 분리합니다.', '동적 페이지 로딩 메서드와 콘텐츠 서비스의 호출 골격이 있습니다. 수집 결과 반환은 미완성입니다.'],
+      structure: [['woong/src/main/java/com/example/woong/config/', 'WebClient와 Selenium 설정'], ['woong/src/main/java/com/example/woong/service/', '동적 페이지 수집 골격과 HTTP 호출 서비스'], ['woong/pom.xml', 'Maven 설정과 의존성']],
+      setup: 'JDK 17로 woong 디렉터리에서 빌드합니다. 브라우저 연동은 로컬 드라이버 환경을 필요로 합니다.',
+      postmanNote: '현재 검토한 커밋은 호출 가능한 애플리케이션 API를 정의하기 전 단계입니다.',
+    }},
+  },
+  {
+    repository: 'test_webflux', group: 'starter', build: 'wrapper',
+    stack: ['Java 17', 'Spring Boot', 'Spring WebFlux', 'MyBatis', 'H2'],
+    content: {ko: {
+      title: 'Spring WebFlux 초기 프로젝트',
+      summary: 'WebFlux·MyBatis·H2 의존성과 컨텍스트 테스트를 갖춘 Spring Boot 시작 구조입니다.',
+      features: ['메인 애플리케이션 클래스와 Maven Wrapper를 포함합니다.', '스프링 컨텍스트 로딩 테스트 파일을 제공합니다.'],
+      structure: [['src/main/java/com/woong/webflux/WebfluxApplication.java', 'Spring Boot 진입점'], ['src/test/java/com/woong/webflux/WebfluxApplicationTests.java', '컨텍스트 초기화 테스트'], ['pom.xml', 'WebFlux, MyBatis, H2 의존성']],
+      setup: 'JDK 17 환경에서 Maven Wrapper로 실행합니다.',
+      postmanNote: '현재 소스는 초기 애플리케이션과 테스트를 담고 있으며 HTTP 라우트 선언은 확인되지 않았습니다.',
+    }},
+  },
+  {
+    repository: 'webflux_sftp_server', group: 'starter', stack: [],
+    content: {ko: {
+      title: 'WebFlux SFTP 서버 저장소',
+      summary: '초기 README를 등록한 저장소입니다. 구현 코드를 갖춘 SFTP 업로드·다운로드 예제는 별도 프로젝트에서 볼 수 있습니다.',
+      features: [],
+      structure: [['README.md', '저장소 이름을 기록한 초기 문서']],
+      setup: '현재 커밋에서 실행 가능한 소스와 빌드 파일을 확인할 수 없습니다.',
+      postmanNote: 'HTTP 요청 예시는 구현된 WebFlux SFTP 업로드·다운로드 프로젝트에서 볼 수 있습니다.',
     }},
   },
 ]
